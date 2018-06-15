@@ -1,0 +1,159 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// The simple model for Hsu et al., 2018
+//
+// MODEL AUTHOR: Ching-Lung Hsu
+//
+// Simulate current-clamp experiments as in Figure 6A
+//
+// Same model as used for Figure 5A,B
+// Construct input-output curves of peak Vm as a function of conductance of synaptic input
+// to evaluate the contribution of persistent sodium current (INap) to subthreshold synaptic integration
+// of temporally summated responses in the model
+// (with input resistance in response to small negative current step and INap reflecting the measurements
+// made from the soma of CA1 pyramidal neurons)
+// p.s. stars on Figure 6 correspond to measurement made just prior to the initiation of a spike
+// See STAR Methods for details
+//
+// Note: select a simulation condition (with or without the Nav channels)
+//
+// For correspondence: Nelson Spruston 
+// Janelia Research Campus, Howard Hughes Medical Institute
+// Mar, 2018
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SELECT SIMULATION CONDITION //
+
+Nav_condition = 1	// with Nav channels
+//Nav_condition = 0	// without Nav channels
+
+//// LOAD GUI ////
+
+load_file("nrngui.hoc")
+//load_proc("nrnmainmenu")
+//load_proc("stdrun.hoc")
+
+//// SET UP OF MODEL GEOMETRY AND BIOPHYSICS ////
+
+create soma
+
+soma.diam = 20*100
+soma.L = 4
+cm = 1
+
+insert NaV2
+
+insert hh
+gl_hh = 0.003*0.02	// specific leak conductance
+gnabar_hh = 0
+gkbar_hh = 0
+
+el_hh = -70
+
+celsius = 33	//37
+
+//// SET UP SYNAPSE ////
+
+objref syn1
+
+syn1 = new Exp2SynM(0.5)	// synapse
+
+syn1.tau1 = 2	// ms
+syn1.tau2 = 20
+
+objref ns_syn1, nc_syn1
+
+ns_syn1 = new NetStim(0.5)	// a presynaptic spike train
+
+ns_syn1.interval = 10	// ms; (mean) time between spikes
+ns_syn1.number = 5	// (average) number of spikes
+ns_syn1.start = 1000	// ms; most likely start time of first spike
+ns_syn1.noise = 0	// fractional randomness; 0 = deterministic
+
+nc_syn1 = new NetCon(ns_syn1, syn1)	// network connection object
+
+nc_syn1.delay = 0	// synaptic delay
+
+//// SET UP STIMULATION PROTOCOL ////
+
+objref stim
+stim = new IClamp(0.5)
+
+stim.del = 0
+stim.dur = 1300		// ms
+
+//// SET UP RECORDING, SIMULATION AND ANALYSIS ////
+
+objref VRec
+VRec = new Vector()
+
+VRec.record(&soma.v(0.5))	// record Vm
+
+Num_step = 200		// number of steps for synaptic conductance (weight)
+
+objref V[Num_step+1]
+
+objref BurstAmp[2], SynWeight[2]	// peak Vm and synaptic weight for two different baseline Vm
+BurstAmp[0] = new Vector(Num_step+1)
+BurstAmp[1] = new Vector(Num_step+1)
+SynWeight[0] = new Vector(Num_step+1)
+SynWeight[1] = new Vector(Num_step+1)
+
+objref InOutGraph
+InOutGraph = new Graph()
+
+tstop = 1300	// ms
+
+objref Vss
+k = 0		// dummy variable
+proc construct() {	// subroutine to simulate, analyze and construct the curve
+
+color_ind = $1		// color used for input-output curve
+end_ind = $2
+
+delta_syn_weight = end_ind/Num_step	// step size for synaptic conductance
+
+	for m = 1, Num_step+1 {
+
+	nc_syn1.weight = (m-1)*delta_syn_weight	// synaptic weight
+
+	run()
+
+	V[m-1] = new Vector()
+	V[m-1].copy(VRec)
+	Vss = V[m-1].at(1000*40, 1300*40)	// dt = 0.025 ms
+	BurstAmp[k].x(m-1) = Vss.max		// measure peak Vm
+	
+	SynWeight[k].x(m-1) = nc_syn1.weight	// record test synaptic conductance
+
+	}
+
+	BurstAmp[k].line(InOutGraph, SynWeight[k], color_ind, 3)
+	
+	InOutGraph.size(0, 0.002, -70, -52)
+	
+k = k + 1
+}
+
+//// RUN SIMULATIONS ////
+
+if (Nav_condition == 1){
+gbar_NaV2 = 0.055*0.05		// specific Na-channel conductance
+DC_current = 6*0.01		// DC current injection for steady depolarization (nA)
+simulation_end_1 = 0.000895	// end value for synaptic conductance in the simulation (uS), for rest
+simulation_end_2 = 0.00036	// end value for synaptic conductance in the simulation (uS), for DC depolarization
+}
+
+if (Nav_condition == 0){
+gbar_NaV2 = 0
+DC_current = 7.63*0.01
+simulation_end_1 = 0.00192533
+simulation_end_2 = 0.00138442
+}
+
+stim.amp = 0
+construct(1, simulation_end_1)
+
+stim.amp = DC_current
+construct(1, simulation_end_2)

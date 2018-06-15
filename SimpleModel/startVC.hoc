@@ -1,0 +1,66 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// The simple model for Hsu et al., 2018
+//
+// MODEL AUTHOR: Ching-Lung Hsu
+//
+// Simulate voltage-clamp exepriments as in Figure 5B
+//
+// Compare the transient and nearly steady-state component of the sodium current in response to EPSP waveforms
+// (generated from the single-compartment model) with different kinetics and at different baseline Vm
+// See STAR Methods for details
+//
+// Note: select a voltage command and a baseline Vm
+//
+// For correspondence: Nelson Spruston 
+// Janelia Research Campus, Howard Hughes Medical Institute
+// Mar, 2018
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//// SELECT A VOLTAGE COMMAND TYPE ////
+
+command_type = 1	// for burst EPSP
+//command_type = 2	// for single EPSP
+
+//// SELECT AN OFFSET FOR VOLTAGE COMMAND ////
+
+offset = 0	// for baseline Vm = -61.3 mV
+//offset = 10	// for baseline Vm = -51.3 mV
+
+//// READ VOLTAGE COMMAND ////
+
+objref EPSPcommand[2]
+EPSPcommand[0] = new Vector()
+EPSPcommand[1] = new Vector()
+
+objref f[2]
+f[0] = new File()
+f[1] = new File()
+
+if (command_type == 1){			// burst EPSP as command
+f[0].ropen("EPSPcommandBurst.dat")
+EPSPcommand[0].scanf(f[0])		// read command into a vector
+f[0].close()
+
+f[1].ropen("EPSPcommandBurstSlow.dat")
+EPSPcommand[1].scanf(f[1])
+f[1].close()
+}
+
+if (command_type == 2){			// single EPSP as command
+f[0].ropen("EPSPcommandSingle.dat")
+EPSPcommand[0].scanf(f[0])		// read command into a vector
+f[0].close()
+
+f[1].ropen("EPSPcommandSingleSlow.dat")
+EPSPcommand[1].scanf(f[1])
+f[1].close()
+}
+
+EPSPcommand[0].add(offset)
+EPSPcommand[1].add(offset)
+
+//// RUN SIMULATIONS ////
+
+xopen("runEPSPcommand.hoc")

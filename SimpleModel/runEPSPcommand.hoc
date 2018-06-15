@@ -1,0 +1,127 @@
+///////////////////////////////////////////////////////
+//
+// Simultae voltage-clamp exepriments as in Figure 5B
+//
+// must be launched from startVC.hoc
+//
+///////////////////////////////////////////////////////
+
+//// LOAD GUI ////
+
+load_file("nrngui.hoc")
+
+//// SET UP MODEL GEOMETRY AND BIOPHYSICS ////
+
+create soma
+
+soma.diam = 20*100
+soma.L = 4
+cm = 1
+
+insert NaV2
+gbar_NaV2 = 0.055*0.05
+
+celsius = 33			//37; I-V curve of persistent sodium current at 33 degress was similar to 37 degress
+
+//// SET UP VOLTAGE COMMAND AND SIMULATION ////
+
+objref stim
+stim = new SEClamp(0.5)
+stim.rs = 0.01
+stim.dur1 = 1e9
+
+objref VRec, InaRec
+objref time
+VRec = new Vector()
+InaRec = new Vector()
+time = new Vector()
+
+VRec.record(&stim.vc)		// record command voltage
+InaRec.record(&soma.ina(0.5))	// record sodium current
+time.record(&t)			// record time
+
+objref V[2], II[2]
+objref VGraph[2], InaGraph[2]
+
+init_volt = -61.2523 + offset	// offset is set in startVC.hoc
+
+ylimitV_s = -70 + offset
+ylimitV_e = -50 + offset
+
+if (command_type == 1){		// command_type is set in srartVC.hoc
+stop_time_1 = 800		// ms
+stop_time_2 = 40000
+xlimit_s_1 = 450
+xlimit_e_1 = 800
+xlimit_s_2 = 22500
+xlimit_e_2 = 40000
+}
+
+if (command_type == 2){
+stop_time_1 = 625
+stop_time_2 = 31250
+xlimit_s_1 = 470
+xlimit_e_1 = 625
+xlimit_s_2 = 23500
+xlimit_e_2 = 31250
+}
+
+//// RUN SIMULATIONS, PLOT RESULTS ////
+
+// Simulate using real-time EPSP //
+
+VGraph[0] = new Graph()
+InaGraph[0] = new Graph()
+
+EPSPcommand[0].play(&stim.amp1, dt)
+
+finitialize(init_volt)
+while(t < stop_time_1) {
+fadvance()
+}
+
+V[0] = new Vector()
+V[0].copy(VRec)
+V[0].plot(VGraph[0], time, 1, 1)
+
+II[0] = new Vector()
+II[0].copy(InaRec)
+II[0].plot(InaGraph[0], time, 1, 1)
+
+// Simulate using temporally slowed EPSP //
+
+VGraph[1] = new Graph()
+InaGraph[1] = new Graph()
+
+EPSPcommand[1].play(&stim.amp1, dt)
+
+finitialize(init_volt)
+while(t < stop_time_2) {
+fadvance()
+}
+
+V[1] = new Vector()
+V[1].copy(VRec)
+V[1].plot(VGraph[1], time, 1, 1)
+
+II[1] = new Vector()
+II[1].copy(InaRec)
+II[1].plot(InaGraph[1], time, 1, 1)
+
+// Optimize visualization //
+
+objref goo
+goo = II[0].cl(500*40-1, II[0].size()-1)
+
+ylimitI_s = goo.min - (goo.max - goo.min)*0.5
+ylimitI_e = goo.max + (goo.max - goo.min)*0.5
+
+VGraph[0].size(xlimit_s_1, xlimit_e_1, ylimitV_s, ylimitV_e)
+VGraph[0].label("Voltage command (real-time)")
+InaGraph[0].size(xlimit_s_1, xlimit_e_1, ylimitI_s, ylimitI_e)
+InaGraph[0].label("I Na (real-time)")
+
+VGraph[1].size(xlimit_s_2, xlimit_e_2, ylimitV_s, ylimitV_e)
+VGraph[1].label("Voltage command (50X slowed)")
+InaGraph[1].size(xlimit_s_2, xlimit_e_2, ylimitI_s, ylimitI_e)
+InaGraph[1].label("I Na (50X slowed)")

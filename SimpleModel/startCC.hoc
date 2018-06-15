@@ -1,0 +1,103 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// The simple model for Hsu et al., 2018
+//
+// MODEL AUTHOR: Ching-Lung Hsu
+//
+// Simulate current-clamp experiments as in Figure 5A
+//
+// Assess voltage dependence of temporally summated synaptic responses
+// Using Na channels with detailed biophysical properties observed in CA1 pyramidal neurons from Carter et al. (2012)
+// and the condutance constrained according to persistent sodium current (INap) measured in Carter et al.
+// input resistance and membrane time constant (in response to small negative current step) as measured at the soma of CA1
+// See STAR Methods for details
+//
+// For correspondence: Nelson Spruston 
+// Janelia Research Campus, Howard Hughes Medical Institute
+// Mar, 2018
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//// LOAD GUI ////
+
+load_file("nrngui.hoc")
+//load_proc("nrnmainmenu")
+//load_proc("stdrun.hoc")
+
+//// SET UP MODEL GEOMETRY AND BIOPHYSICS ////
+
+create soma	// the single compartment was called soma because it simulates membrane properties at rest and INap measured in somatic recordings
+
+soma.diam = 20*100
+soma.L = 4
+cm = 1
+
+insert NaV2
+gbar_NaV2 = 0.055*0.05	// specific Na-channel conductance
+
+insert hh
+gl_hh = 0.003*0.02	// specific leak conductance
+gnabar_hh = 0
+gkbar_hh = 0
+
+el_hh = -70 		// reversal potential for the leak conductance
+
+celsius = 33	//37
+
+//// SET UP SYNAPSE ////
+
+objref syn1
+
+syn1 = new Exp2SynM(0.5)	// synapse
+
+syn1.tau1 = 2	// ms
+syn1.tau2 = 20
+
+objref ns_syn1, nc_syn1
+
+ns_syn1 = new NetStim(0.5)	// a presynaptic spike train
+
+ns_syn1.interval = 10	// ms; (mean) time between spikes
+ns_syn1.number = 5	// (average) number of spikes
+ns_syn1.start = 1000	// ms; most likely start time of first spike
+ns_syn1.noise = 0	// fractional randomness; 0 = deterministic
+
+nc_syn1 = new NetCon(ns_syn1, syn1)	// network connection object
+
+nc_syn1.weight = 0.00005	// synaptic weight to reproduce relatively small baseline synaptic responses to mimic in-vitro experiments
+nc_syn1.delay = 0		// synaptic delay
+
+//// SET UP STIMULATION PROTOCOL AND SIMULATION ////
+
+objref stim
+stim = new IClamp(0.5)
+stim.del = 0
+stim.dur = 1300		// ms
+
+objref gg
+gg = new Graph()
+gg.addvar("soma.v(0.5)")	// plot voltage
+gg.exec_menu("Keep Lines")
+graphList[0].append(gg)
+
+objref kk
+kk = new Graph()
+kk.addvar("soma.ina(0.5)")	// plot sodium current
+kk.exec_menu("Keep Lines")
+graphList[0].append(kk)
+
+tstop = 1300		// ms
+
+const = 0.01		// constant for DC current injection to parallel experiments (nA)
+
+stim.amp = -3*const
+run()
+
+stim.amp = 7*const
+run()
+
+stim.amp = 8.42*const
+run()
+
+gg.size(950, 1300, -72, -59)
+kk.size(950, 1300, -0.0003, 0)
