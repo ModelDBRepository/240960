@@ -20,3 +20,11 @@ the FullModel folder.
 
 These models were contributed by Ching-Lung Hsu
 (hsuc@janelia.hhmi.org) and Aaron Milstein (aaronmil@stanford.edu).
+
+20180615 An update from Aaron Milstein for the FullModel folder where
+the three python scripts for generating figures take in the required
+.hdf5 file paths as command line arguments, e.g.:
+
+python plot_nap_EPSC_amplification data/20180220_nap_EPSC_amplification_soma.hdf5  # generates plots similar to Figure S5
+python plot_nap_EPSP_amplification data/07162017_nap_amplification_DC_soma_stim_trunk.hdf5 data/07162017_nap_amplification_DC_dend_stim_trunk.hdf5  # generates plots similar to Figure 5C and S4
+python plot_nap_EPSP_amplification_IO data/08112017_nap_amplification_IO_DC_soma_stim_trunk.hdf5  # generates plots similar to Figure 6B
